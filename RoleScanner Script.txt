@@ -1,0 +1,272 @@
+-- RoleScanner: UI, Target Cards & Entity Scanner Engine
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+
+local localPlayer = Players.LocalPlayer
+if not localPlayer then return end
+
+local playerGui = localPlayer:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RoleScannerHUD"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local COLOR_NO_WEAPON = Color3.fromRGB(46, 213, 115)
+local COLOR_GUN = Color3.fromRGB(0, 168, 255)
+local COLOR_KNIFE = Color3.fromRGB(255, 45, 85)
+local KNIFE_WORDS = {"knife", "blade", "sword", "dagger", "machete", "murder", "katana"}
+local GUN_WORDS = {"gun", "pistol", "revolver", "rifle", "shotgun", "sniper", "sheriff", "firearm", "blaster"}
+
+local activeHighlights = {}
+local selectedTarget = nil
+
+local function playFeedback(pitch)
+	local s = Instance.new("Sound")
+	s.SoundId = "rbxassetid://9114223170"
+	s.Volume = 0.5
+	s.PlaybackSpeed = pitch or 1
+	s.Parent = SoundService
+	s:Play()
+	game:GetService("Debris"):AddItem(s, 1.5)
+end
+
+-- Build HUD Panel
+local hudFrame = Instance.new("Frame")
+hudFrame.Name = "HUDFrame"
+hudFrame.Size = UDim2.new(0, 310, 0, 270)
+hudFrame.Position = UDim2.new(1, -330, 0, 45)
+hudFrame.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
+hudFrame.BackgroundTransparency = 0.12
+hudFrame.BorderSizePixel = 0
+hudFrame.Parent = screenGui
+
+local hudCorner = Instance.new("UICorner")
+hudCorner.CornerRadius = UDim.new(0, 10)
+hudCorner.Parent = hudFrame
+
+local hudStroke = Instance.new("UIStroke")
+hudStroke.Color = Color3.fromRGB(55, 70, 95)
+hudStroke.Thickness = 1.5
+hudStroke.Parent = hudFrame
+
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, 0, 0, 36)
+header.BackgroundColor3 = Color3.fromRGB(26, 33, 46)
+header.BorderSizePixel = 0
+header.Parent = hudFrame
+
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 10)
+headerCorner.Parent = header
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -90, 1, 0)
+titleLabel.Position = UDim2.new(0, 12, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "ROLE SCANNER & HIGHLIGHT"
+titleLabel.TextColor3 = Color3.fromRGB(240, 245, 255)
+titleLabel.TextSize = 12
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = header
+
+local minBtn = Instance.new("TextButton")
+minBtn.Name = "MinBtn"
+minBtn.Size = UDim2.new(0, 26, 0, 26)
+minBtn.Position = UDim2.new(1, -32, 0, 5)
+minBtn.BackgroundColor3 = Color3.fromRGB(42, 52, 70)
+minBtn.Text = "-"
+minBtn.TextColor3 = Color3.fromRGB(220, 225, 235)
+minBtn.TextSize = 15
+minBtn.Font = Enum.Font.GothamBold
+minBtn.BorderSizePixel = 0
+minBtn.Parent = header
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseBtn"
+closeBtn.Size = UDim2.new(0, 26, 0, 26)
+closeBtn.Position = UDim2.new(1, -62, 0, 5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 45)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 220, 220)
+closeBtn.TextSize = 13
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.BorderSizePixel = 0
+closeBtn.Parent = header
+
+local content = Instance.new("Frame")
+content.Name = "Content"
+content.Size = UDim2.new(1, -20, 1, -44)
+content.Position = UDim2.new(0, 10, 0, 40)
+content.BackgroundTransparency = 1
+content.Parent = hudFrame
+
+local btnAll = Instance.new("TextButton")
+btnAll.Name = "BtnHighlightAll"
+btnAll.Size = UDim2.new(0.48, -4, 0, 30)
+btnAll.Position = UDim2.new(0, 0, 0, 68)
+btnAll.BackgroundColor3 = Color3.fromRGB(28, 95, 195)
+btnAll.Text = "Highlight All"
+btnAll.TextColor3 = Color3.new(1, 1, 1)
+btnAll.Font = Enum.Font.GothamBold
+btnAll.TextSize = 11
+btnAll.Parent = content
+
+local btnClear = Instance.new("TextButton")
+btnClear.Name = "BtnClear"
+btnClear.Size = UDim2.new(0.48, -4, 0, 30)
+btnClear.Position = UDim2.new(0.52, 4, 0, 68)
+btnClear.BackgroundColor3 = Color3.fromRGB(48, 58, 76)
+btnClear.Text = "Clear All"
+btnClear.TextColor3 = Color3.fromRGB(230, 230, 230)
+btnClear.Font = Enum.Font.GothamBold
+btnClear.TextSize = 11
+btnClear.Parent = content
+
+local btnScanner = Instance.new("TextButton")
+btnScanner.Name = "BtnScanner"
+btnScanner.Size = UDim2.new(1, 0, 0, 26)
+btnScanner.Position = UDim2.new(0, 0, 0, 104)
+btnScanner.BackgroundColor3 = Color3.fromRGB(20, 60, 40)
+btnScanner.Text = "Scanner: [ON]"
+btnScanner.TextColor3 = Color3.fromRGB(80, 255, 160)
+btnScanner.Font = Enum.Font.GothamBold
+btnScanner.TextSize = 11
+btnScanner.Parent = content
+
+local btnXRay = Instance.new("TextButton")
+btnXRay.Name = "BtnXRay"
+btnXRay.Size = UDim2.new(1, 0, 0, 26)
+btnXRay.Position = UDim2.new(0, 0, 0, 136)
+btnXRay.BackgroundColor3 = Color3.fromRGB(24, 32, 45)
+btnXRay.Text = "See Through Walls: [ON]"
+btnXRay.TextColor3 = Color3.fromRGB(0, 210, 255)
+btnXRay.Font = Enum.Font.GothamBold
+btnXRay.TextSize = 11
+btnXRay.Parent = content
+
+local countLabel = Instance.new("TextLabel")
+countLabel.Name = "CountLabel"
+countLabel.Size = UDim2.new(1, 0, 0, 18)
+countLabel.Position = UDim2.new(0, 0, 0, 200)
+countLabel.BackgroundTransparency = 1
+countLabel.Text = "Active Highlights: 0"
+countLabel.TextColor3 = Color3.fromRGB(140, 155, 180)
+countLabel.TextSize = 10
+countLabel.Font = Enum.Font.Gotham
+countLabel.Parent = content
+
+-- Target Card
+local targetCard = Instance.new("Frame")
+targetCard.Name = "TargetCard"
+targetCard.Size = UDim2.new(0, 290, 0, 95)
+targetCard.Position = UDim2.new(0.5, -145, 1, -120)
+targetCard.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
+targetCard.BackgroundTransparency = 0.1
+targetCard.Visible = false
+targetCard.Parent = screenGui
+
+local targetCardStroke = Instance.new("UIStroke")
+targetCardStroke.Color = Color3.fromRGB(46, 213, 115)
+targetCardStroke.Thickness = 2
+targetCardStroke.Parent = targetCard
+
+local targetTitle = Instance.new("TextLabel")
+targetTitle.Size = UDim2.new(1, -38, 0, 24)
+targetTitle.Position = UDim2.new(0, 12, 0, 6)
+targetTitle.BackgroundTransparency = 1
+targetTitle.TextColor3 = Color3.new(1, 1, 1)
+targetTitle.Font = Enum.Font.GothamBold
+targetTitle.TextSize = 13
+targetTitle.TextXAlignment = Enum.TextXAlignment.Left
+targetTitle.Parent = targetCard
+
+local roleBadge = Instance.new("TextLabel")
+roleBadge.Size = UDim2.new(1, -24, 0, 22)
+roleBadge.Position = UDim2.new(0, 12, 0, 32)
+roleBadge.BackgroundColor3 = Color3.fromRGB(28, 34, 46)
+roleBadge.Font = Enum.Font.GothamBold
+roleBadge.TextSize = 11
+roleBadge.Parent = targetCard
+
+local targetDetail = Instance.new("TextLabel")
+targetDetail.Size = UDim2.new(1, -24, 0, 20)
+targetDetail.Position = UDim2.new(0, 12, 0, 62)
+targetDetail.BackgroundTransparency = 1
+targetDetail.TextColor3 = Color3.fromRGB(180, 195, 215)
+targetDetail.Font = Enum.Font.GothamMedium
+targetDetail.TextSize = 10
+targetDetail.TextXAlignment = Enum.TextXAlignment.Left
+targetDetail.Parent = targetCard
+
+-- Logic Helpers
+local function matchesAny(name, words)
+	for _, w in ipairs(words) do
+		if name:find(w) then return true end
+	end
+	return false
+end
+
+local function classifyEntityWeapons(model)
+	local tools = {}
+	for _, item in ipairs(model:GetDescendants()) do
+		if item:IsA("Tool") then table.insert(tools, item) end
+	end
+	local player = Players:GetPlayerFromCharacter(model)
+	if player and player:FindFirstChild("Backpack") then
+		for _, item in ipairs(player.Backpack:GetChildren()) do
+			if item:IsA("Tool") then table.insert(tools, item) end
+		end
+	end
+	local hasKnife, knifeName = false, nil
+	local hasGun, gunName = false, nil
+	for _, tool in ipairs(tools) do
+		local n = string.lower(tool.Name)
+		local wt = tool:GetAttribute("WeaponType")
+		local isKnife = wt == "Knife" or matchesAny(n, KNIFE_WORDS)
+		local isGun = wt == "Gun" or matchesAny(n, GUN_WORDS)
+		if isKnife then hasKnife, knifeName = true, tool.Name
+		elseif isGun then hasGun, gunName = true, tool.Name end
+	end
+	if hasKnife then return "Knife", knifeName or "Knife", COLOR_KNIFE end
+	if hasGun then return "Gun", gunName or "Gun", COLOR_GUN end
+	return "Unarmed", "None", COLOR_NO_WEAPON
+end
+
+local function applyEntityHighlight(model)
+	if not model or not model:IsA("Model") or not model:FindFirstChildOfClass("Humanoid") then return end
+	local role, weaponName, color = classifyEntityWeapons(model)
+	local highlight = model:FindFirstChild("RoleHighlight") or Instance.new("Highlight")
+	highlight.Name = "RoleHighlight"
+	highlight.Parent = model
+	local xray = localPlayer:GetAttribute("ScannerXRay")
+	if xray == nil then xray = true end
+	highlight.Adornee = model
+	highlight.FillColor = color
+	highlight.FillTransparency = 0.35
+	highlight.OutlineColor = Color3.new(1, 1, 1):Lerp(color, 0.4)
+	highlight.DepthMode = xray and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+	activeHighlights[model] = { Highlight = highlight, Role = role, Weapon = weaponName, Color = color }
+end
+
+btnAll.MouseButton1Click:Connect(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character then applyEntityHighlight(player.Character) end
+	end
+	playFeedback(1.2)
+end)
+
+btnClear.MouseButton1Click:Connect(function()
+	for model, entry in pairs(activeHighlights) do
+		if entry.Highlight then entry.Highlight:Destroy() end
+	end
+	activeHighlights = {}
+	targetCard.Visible = false
+	playFeedback(0.8)
+end)
+
+print("[RoleScanner] Loaded successfully.")
