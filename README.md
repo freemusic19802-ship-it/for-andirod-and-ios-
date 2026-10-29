@@ -305,14 +305,14 @@ RunService:BindToRenderStep("AutoDefenseLock", Enum.RenderPriority.Camera.Value 
 					end
 				end
 			end
-			local screenPos, onScreen = camera:WorldToViewportPoint(aimPos)
+				local screenPos, onScreen = camera:WorldToViewportPoint(aimPos)
 			if onScreen then
 				reticle.Position = UDim2.new(0, screenPos.X, 0, screenPos.Y)
 				reticle.Visible = true
 				targetLabel.Text = string.format("[LOCKED: %s | %.0f STUDS | HP: %.0f]", target.Name, dist, targetHum.Health)
-				else
-					reticle.Visible = false
-				end
+			else
+				reticle.Visible = false
+			end
 			bannerStroke.Color = Color3.fromRGB(255, 60, 60)
 			statusBanner.BackgroundColor3 = Color3.fromRGB(35, 15, 15)
 			statusIcon.Text = "\u{1F3AF}"
